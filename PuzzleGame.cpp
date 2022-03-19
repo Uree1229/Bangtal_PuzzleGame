@@ -9,7 +9,7 @@
 using namespace std;
 
 SceneID scene_back;
-ObjectID start, initObjects[16], gameObjects[16];
+ObjectID start, back_blank, initObjects[16], gameObjects[16], timer_block;
 TimerID timerMixing, timer_end;
 
 time_t time_start, time_end;
@@ -25,7 +25,7 @@ bool gametype = false;
 struct POS {
 	int x, y;
 };
-const POS positions[16] = {
+POS positions[16] = {
 	{340, 510}, {490, 510}, {640, 510}, {790, 510},
 	{340, 360}, {490, 360}, {640, 360}, {790, 360},
 	{340, 210}, {490, 210}, {640, 210}, {790, 210},
@@ -43,53 +43,76 @@ ObjectID create_Object(const char* image, SceneID scene, int x, int y, bool show
 	return object;
 }
 
-void random_number() {
+void random_number(int start, int end) {
 	random_device rd;
 	mt19937_64 rdn(rd());
-	uniform_int_distribution<int> dis(0, 3);
+	uniform_int_distribution<int> dis(start, end);
 	rd_num = dis(rdn);
 }
-void image_set() {
-	random_number();
-	switch (rd_num) {
+
+void set_backgroud() {
+	switch (rd_num)
+	{
 	case 0:
+		scene_back = createScene("background", "Images1/back.png");
 
 		break;
 	case 1:
-
+		scene_back = createScene("background", "Images2/back.png");
 		break;
+
 	case 2:
-
-		break;
-	case 3:
-
+		scene_back = createScene("background", "Images3/back.png");
 		break;
 	}
 }
+
+void set_image() {
+	char image[30];
+	switch (rd_num)
+	{
+	case 0:
+		for (int i = 0; i < 16; i++) {
+			sprintf(image, "Images1/Puzzle_%d.png", i + 1);
+			initObjects[i] = create_Object(image, scene_back, positions[i].x, positions[i].y, true);
+			gameObjects[i] = initObjects[i];
+
+		}
+		break;
+	case 1:
+		for (int i = 0; i < 16; i++) {
+			sprintf(image, "Images2/Puzzle_%d.png", i + 1);
+			initObjects[i] = create_Object(image, scene_back, positions[i].x, positions[i].y, true);
+			gameObjects[i] = initObjects[i];
+
+		}
+		break;
+	case 2:
+		for (int i = 0; i < 16; i++) {
+			sprintf(image, "Images3/Puzzle_%d.png", i + 1);
+			initObjects[i] = create_Object(image, scene_back, positions[i].x, positions[i].y, true);
+			gameObjects[i] = initObjects[i];
+
+		}
+		break;
+	
+	}
+}
+
 void game_init()
 {
 	
-	scene_back = createScene("background", "Images/back.png");
-	
-
-	ObjectID back_blank = createObject("Images/blank.png");
-	locateObject(back_blank, scene_back, 340, 60);
-	showObject(back_blank);
-
-	char image[30];
-		for (int i = 0; i < 16; i++) {
-		sprintf(image, "Images/Puzzle_%d.png", i + 1);
-		initObjects[i] = create_Object(image, scene_back, positions[i].x, positions[i].y, true);
-		gameObjects[i] = initObjects[i];
-
-	}
-
+	random_number(0,2);
+	set_backgroud();
+	back_blank = create_Object("Images/blank.png", scene_back, 340, 60, true);
+	set_image();
+	timer_block = create_Object("Images/block.png", scene_back, 610, 670, true);
 	start = create_Object("Images/start.png", scene_back, 1000, 20, true);
 
 	blank = 15;
 
 	gametype = false;
-	
+
 	timerMixing = createTimer();
 }
 
@@ -131,9 +154,9 @@ void puzzle_random_move()
 {
 	bool possible = false;
 	int next = -1;
-	while (!possible) 
+	while (!possible)
 	{
-		random_number();
+		random_number(0, 3);
 		switch (rd_num) {
 		case 0:
 			next = blank - 4;
@@ -161,7 +184,7 @@ void game_prepare()
 
 	setTimer(timerMixing, animationTime);
 	startTimer(timerMixing);
-	
+
 }
 
 bool game_check()
@@ -187,14 +210,14 @@ void set_timer_end() {
 void game_end()
 {
 	gametype = false;
-	
+
 	showObject(gameObjects[blank]);
 	setObjectImage(start, "Images/restart.png");
 	showObject(start);
 
 	time_end = time(NULL);
 	time_check();
-	
+
 }
 
 
@@ -212,9 +235,9 @@ void mouseCallback(ObjectID object, int x, int y, MouseAction action)
 	}
 	else if (mixing == 0 && object == start) {
 		game_prepare();
-		
+
 	}
-	
+
 }
 
 void timerCallback(TimerID timer)
@@ -246,7 +269,7 @@ void timerCallback(TimerID timer)
 
 int main()
 {
-	setGameOption(GameOption::GAME_OPTION_ROOM_TITLE,0);
+	setGameOption(GameOption::GAME_OPTION_ROOM_TITLE, 0);
 	setGameOption(GameOption::GAME_OPTION_INVENTORY_BUTTON, 0);
 	setGameOption(GameOption::GAME_OPTION_MESSAGE_BOX_BUTTON, 0);
 
