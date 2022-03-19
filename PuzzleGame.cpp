@@ -1,29 +1,36 @@
 ﻿#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES	1
+
 #include <bangtal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <random>
 #include <string>
 #include <string.h>
-
-
+#include <random>
+#include <time.h>
 
 using namespace std;
 
 SceneID scene_back;
-ObjectID puzzle[10], puzzle_pos[10], mixButton, puzzle_blank, blank_back;
+ObjectID start, initObjects[16], gameObjects[16];
+TimerID timerMixing, timer_end;
 
-int blank, num_random, rd_pos[10], gametype = 0; // 빈 퍼즐의 숫자
+time_t time_start, time_end;
+
+char message[30];
+int blank = 15, rd_num, mixing = 0, time_1;
+const int mixCount = 300;
+const Second animationTime = 0.01f;
+const char* time_f;
+
+bool gametype = false;
 
 struct POS {
 	int x, y;
 };
-POS position[10] = { {0,0},            //퍼즐 생성위치
-   {340, 460}, {540, 460}, {740, 460},
-   {340, 260}, {540, 260}, {740, 260},
-   {340,  60}, {540,  60}, {740,  60},
-
-}, change_pos[9];
+const POS positions[16] = {
+	{340, 510}, {490, 510}, {640, 510}, {790, 510},
+	{340, 360}, {490, 360}, {640, 360}, {790, 360},
+	{340, 210}, {490, 210}, {640, 210}, {790, 210},
+	{340, 60}, {490, 60}, {640, 60}, {790, 60},
+};
 
 ObjectID create_Object(const char* image, SceneID scene, int x, int y, bool shown) {
 
@@ -35,88 +42,82 @@ ObjectID create_Object(const char* image, SceneID scene, int x, int y, bool show
 	}
 	return object;
 }
-void game_set() {
 
-	char image[20];
-	for (int i = 1; i < 10; i++) {
-		sprintf(image, "Images/Puzzle_%d.png", i);
-		puzzle[i] = create_Object(image, scene_back, position[i].x, position[i].y, true);
-		//puzzle_pos[i] = puzzle[i];
-	}
-
-}
 void random_number() {
-	int i, j;
 	random_device rd;
-	mt19937_64 Rd(rd());
-
-	for (i = 1; i < 10; i++) {
-		uniform_int_distribution<int> disn(1, 9);
-		num_random = disn(Rd);
-		rd_pos[i] = num_random;
-		for (j = 0; j < i; j++) {
-			if (rd_pos[i] == rd_pos[j]) {
-				i--;
-			}
-		}
-
-	}
-
+	mt19937_64 rdn(rd());
+	uniform_int_distribution<int> dis(0, 3);
+	rd_num = dis(rdn);
 }
-void random_blank() {
-
-	random_device rd;
-	mt19937_64 Rd(rd());
-	uniform_int_distribution<int> disN(1, 1);
-	blank = disN(Rd);
-	hideObject(puzzle[blank]);
-
-}
-void reset() {
-	for (int i = 0; i < 9; i++) {
-		showObject(puzzle[i]);
-	}
-}
-void puzzle_mix() {
-
-	char image[20];
+void image_set() {
 	random_number();
-	for (int i = 1; i < 10; i++) {
-		sprintf(image, "Images/Puzzle_%d.png", rd_pos[i]);
-		setObjectImage(puzzle[i], image);
-		puzzle_pos[i] = puzzle[i];
-		//locateObject(puzzle[i], scene_back, position[rd_pos[i]].x, position[rd_pos[i]].y);
-		//change_pos[i] = position[rd_pos[i]];
+	switch (rd_num) {
+	case 0:
 
+		break;
+	case 1:
+
+		break;
+	case 2:
+
+		break;
+	case 3:
+
+		break;
 	}
-
-
 }
-int game_index(ObjectID oid) {
-	for (int i = 1; i < 10; i++) {
-		if (puzzle_pos[i] == oid) {
-			return i;
-		}
+void game_init()
+{
+	
+	scene_back = createScene("background", "Images/back.png");
+	
+
+	ObjectID back_blank = createObject("Images/blank.png");
+	locateObject(back_blank, scene_back, 340, 60);
+	showObject(back_blank);
+
+	char image[30];
+		for (int i = 0; i < 16; i++) {
+		sprintf(image, "Images/Puzzle_%d.png", i + 1);
+		initObjects[i] = create_Object(image, scene_back, positions[i].x, positions[i].y, true);
+		gameObjects[i] = initObjects[i];
+
 	}
+
+	start = create_Object("Images/start.png", scene_back, 1000, 20, true);
+
+	blank = 15;
+
+	gametype = false;
+	
+	timerMixing = createTimer();
+}
+
+
+int click_return(ObjectID objectid) {
+	for (int i = 0; i < 16; i++) {
+		if (gameObjects[i] == objectid) return i;
+	}
+
 	return -1;
 }
-bool game_move(int index)
+
+
+bool puzzle_move(int index)
 {
-	if (index < 1) return false;
-	if (index > 9) return false;
+	if (index < 0) return false;
+	if (index > 15) return false;
 
-	if (index == (blank - 3) || index == (blank + 3) ||
-		(index == (blank - 1) && (blank % 3) != 0) ||
-		(index == (blank + 1) && (blank % 3) != 2)) {
+	if (index == (blank - 4) || index == (blank + 4) ||
+		(index == (blank - 1) && (blank % 4) != 0) ||
+		(index == (blank + 1) && (blank % 4) != 3)) {
 
-		locateObject(puzzle[index], scene_back, position[blank].x, position[blank].y);
-		locateObject(puzzle[blank], scene_back, position[index].x, position[index].y);
+		locateObject(gameObjects[index], scene_back, positions[blank].x, positions[blank].y);
+		locateObject(gameObjects[blank], scene_back, positions[index].x, positions[index].y);
 
-		ObjectID o = puzzle[blank];
-		puzzle[blank] = puzzle[index];
-		puzzle[index] = o;
-
-
+		ObjectID temp = gameObjects[blank];
+		gameObjects[blank] = gameObjects[index];
+		gameObjects[index] = temp;
 
 		blank = index;
 
@@ -126,399 +127,132 @@ bool game_move(int index)
 	return false;
 }
 
-void mouse_callback(ObjectID object, int x, int y, MouseAction action) {
-
-	int a;
-	string b;
-	const char* c;
-
-	if (gametype == 0) {
-		if (object == mixButton) {
-			game_set();
-			puzzle_mix();
-			random_blank();
-			gametype = 1;
-			hideObject(mixButton);
-		}
-	}
-	else if (gametype == 1) {
-		if (game_index(object)) {
-			a = game_index(object);
-			b = to_string(a);
-			c = b.c_str();
-			showMessage(c);
-			char image1[20];
-			char image2[20];
-			if (blank == 1) {
-
-				if (game_index(object) == 2) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[2]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[1]);
-					setObjectImage(puzzle[1], image1);
-					setObjectImage(puzzle[2], image2);
-
-					showObject(puzzle[blank]);
-					blank = 2;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[1];
-					rd_pos[2] = rd_pos[1];
-					rd_pos[1] = t;
-				}
-				else if (game_index(object) == 4) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[4]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[1]);
-					setObjectImage(puzzle[1], image1);
-					setObjectImage(puzzle[4], image2);
-					showObject(puzzle[blank]);
-					blank = 4;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[4];
-					rd_pos[4] = rd_pos[1];
-					rd_pos[1] = t;
-				}
-			}  //f //f
-			else if (blank == 2) {
-				if (game_index(object) == 1) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[1]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[2]);
-					setObjectImage(puzzle[2], image1);
-					setObjectImage(puzzle[1], image2);
-
-					showObject(puzzle[blank]);
-					blank = 1;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[2];
-					rd_pos[2] = rd_pos[1];
-					rd_pos[1] = t;
-
-				}
-				else if (game_index(object) == 3) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[3]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[2]);
-					setObjectImage(puzzle[3], image1);
-					setObjectImage(puzzle[2], image2);
-
-					showObject(puzzle[blank]);
-					blank = 3;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[3];
-					rd_pos[3] = rd_pos[2];
-					rd_pos[2] = t;
-
-				}
-
-				else if (game_index(object) == 5) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[5]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[2]);
-					setObjectImage(puzzle[2], image1);
-					setObjectImage(puzzle[5], image2);
-
-					showObject(puzzle[blank]);
-					blank = 5;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[5];
-					rd_pos[5] = rd_pos[2];
-					rd_pos[2] = t;
-				}
-
-			}
-			else if (blank == 3) {
-				if (game_index(object) == 2) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[2]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[3]);
-					setObjectImage(puzzle[2], image1);
-					setObjectImage(puzzle[3], image2);
-
-					showObject(puzzle[blank]);
-					blank = 2;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[2];
-					rd_pos[2] = rd_pos[3];
-					rd_pos[3] = t;
-
-				}
-				else if (game_index(object) == 6) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[6]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[3]);
-					setObjectImage(puzzle[3], image1);
-					setObjectImage(puzzle[6], image2);
-
-					showObject(puzzle[blank]);
-					blank = 6;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[6];
-					rd_pos[6] = rd_pos[3];
-					rd_pos[3] = t;
-				}
-
-
-			}
-			else if (blank == 4) {
-				if (game_index(object) == 1) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[1]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[4]);
-
-					setObjectImage(puzzle[1], image1);
-					setObjectImage(puzzle[4], image2);
-
-					showObject(puzzle[blank]);
-					blank = 1;
-					hideObject(puzzle[blank]);
-
-					int t = rd_pos[4];
-					rd_pos[4] = rd_pos[1];
-					rd_pos[1] = t;
-
-
-				}
-				else if (game_index(object) == 5) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[5]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[4]);
-					setObjectImage(puzzle[5], image1);
-					setObjectImage(puzzle[4], image2);
-
-
-					showObject(puzzle[blank]);
-					blank = 5;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[4];
-					rd_pos[4] = rd_pos[5];
-					rd_pos[5] = t;
-				}
-
-				else if (game_index(object) == 7) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[7]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[4]);
-					setObjectImage(puzzle[4], image1);
-					setObjectImage(puzzle[7], image2);
-
-					showObject(puzzle[blank]);
-					blank = 7;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[4];
-					rd_pos[4] = rd_pos[7];
-					rd_pos[7] = t;
-				}
-
-			}
-
-			else if (blank == 5) {
-				if (game_index(object) == 2) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[2]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[5]);
-					setObjectImage(puzzle[2], image1);
-					setObjectImage(puzzle[5], image2);
-
-					showObject(puzzle[blank]);
-					blank = 2;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[5];
-					rd_pos[5] = rd_pos[2];
-					rd_pos[2] = t;
-
-
-				}
-				else if (game_index(object) == 4) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[4]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[5]);
-					setObjectImage(puzzle[5], image1);
-					setObjectImage(puzzle[4], image2);
-
-					showObject(puzzle[blank]);
-					blank = 4;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[4];
-					rd_pos[4] = rd_pos[5];
-					rd_pos[5] = t;
-				}
-				else if (game_index(object) == 6) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[6]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[5]);
-					setObjectImage(puzzle[6], image1);
-					setObjectImage(puzzle[5], image2);
-
-					showObject(puzzle[blank]);
-					blank = 6;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[5];
-					rd_pos[5] = rd_pos[6];
-					rd_pos[6] = t;
-				}
-
-				else if (game_index(object) == 8) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[8]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[5]);
-					setObjectImage(puzzle[5], image1);
-					setObjectImage(puzzle[8], image2);
-
-					showObject(puzzle[blank]);
-					blank = 8;
-					hideObject(puzzle[blank]);
-					int t = rd_pos[8];
-					rd_pos[8] = rd_pos[5];
-					rd_pos[5] = t;
-				}
-
-			}
-			else if (blank == 6) {
-				if (game_index(object) == 3) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[3]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[6]);
-					setObjectImage(puzzle[3], image1);
-					setObjectImage(puzzle[6], image2);
-
-					showObject(puzzle[blank]);
-					blank = 3;
-					hideObject(puzzle[blank]);
-
-
-				}
-				else if (game_index(object) == 5) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[4]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[6]);
-					setObjectImage(puzzle[6], image1);
-					setObjectImage(puzzle[4], image2);
-
-					showObject(puzzle[blank]);
-					blank = 5;
-					hideObject(puzzle[blank]);
-				}
-
-				else if (game_index(object) == 9) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[9]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[6]);
-					setObjectImage(puzzle[6], image1);
-					setObjectImage(puzzle[9], image2);
-
-					showObject(puzzle[blank]);
-					blank = 9;
-					hideObject(puzzle[blank]);
-				}
-
-			}
-			else if (blank == 7) {
-				if (game_index(object) == 4) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[7]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[4]);
-					setObjectImage(puzzle[7], image1);
-					setObjectImage(puzzle[4], image2);
-
-					showObject(puzzle[blank]);
-					blank = 4;
-					hideObject(puzzle[blank]);
-
-
-				}
-				else if (game_index(object) == 8) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[8]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[7]);
-					setObjectImage(puzzle[7], image1);
-					setObjectImage(puzzle[8], image2);
-
-					showObject(puzzle[blank]);
-					blank = 8;
-					hideObject(puzzle[blank]);
-				}
-			}
-			else if (blank == 8) {
-				if (game_index(object) == 5) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[5]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[8]);
-					setObjectImage(puzzle[8], image1);
-					setObjectImage(puzzle[5], image2);
-
-					showObject(puzzle[blank]);
-					blank = 5;
-					hideObject(puzzle[blank]);
-
-
-				}
-				else if (game_index(object) == 7) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[7]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[8]);
-					setObjectImage(puzzle[8], image1);
-					setObjectImage(puzzle[7], image2);
-
-					showObject(puzzle[blank]);
-					blank = 7;
-					hideObject(puzzle[blank]);
-				}
-
-				else if (game_index(object) == 9) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[9]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[8]);
-					setObjectImage(puzzle[8], image1);
-					setObjectImage(puzzle[9], image2);
-
-					showObject(puzzle[blank]);
-					blank = 9;
-					hideObject(puzzle[blank]);
-				}
-
-			}
-			else if (blank == 9) {
-				if (game_index(object) == 6) {
-
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[9]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[6]);
-					setObjectImage(puzzle[6], image1);
-					setObjectImage(puzzle[9], image2);
-
-					showObject(puzzle[blank]);
-					blank = 6;
-					hideObject(puzzle[blank]);
-
-
-				}
-				else if (game_index(object) == 8) {
-					sprintf(image1, "Images/Puzzle_%d.png", rd_pos[8]);
-					sprintf(image2, "Images/Puzzle_%d.png", rd_pos[9]);
-					setObjectImage(puzzle[9], image1);
-					setObjectImage(puzzle[8], image2);
-
-					showObject(puzzle[blank]);
-					blank = 8;
-					hideObject(puzzle[blank]);
-				}
-
-
-
-			}
+void puzzle_random_move()
+{
+	bool possible = false;
+	int next = -1;
+	while (!possible) 
+	{
+		random_number();
+		switch (rd_num) {
+		case 0:
+			next = blank - 4;
+			break;
+		case 1:
+			next = blank + 4;
+			break;
+		case 2:
+			next = (blank % 4 != 0) ? (blank - 1) : -1;
+			break;
+		case 3:
+			next = (blank % 4 != 3) ? (blank + 1) : -1;
+			break;
 		}
 
+		possible = puzzle_move(next);
+	}
+}
+
+void game_prepare()
+{
+	hideObject(gameObjects[blank]);
+
+	mixing = mixCount;
+
+	setTimer(timerMixing, animationTime);
+	startTimer(timerMixing);
+	
+}
+
+bool game_check()
+{
+	for (int i = 0; i < 16; i++) {
+		if (gameObjects[i] != initObjects[i]) return false;
 	}
 
+	return true;
+}
+void time_check() {
+	time_1 = time_end - time_start;
+	string time_2;
+	time_2 = to_string(time_1);
+	time_f = time_2.c_str();
+	showMessage(time_f);
+}
+void set_timer_end() {
+	timer_end = createTimer(360.0f);
+	startTimer(timer_end);
+	showTimer(timer_end);
+}
+void game_end()
+{
+	gametype = false;
+	
+	showObject(gameObjects[blank]);
+	setObjectImage(start, "Images/restart.png");
+	showObject(start);
+
+	time_end = time(NULL);
+	time_check();
+	
 }
 
 
 
-int main() {
+void mouseCallback(ObjectID object, int x, int y, MouseAction action)
+{
+	if (gametype) {
+		puzzle_move(click_return(object));
 
-	setMouseCallback(mouse_callback);
-	setGameOption(GameOption::GAME_OPTION_ROOM_TITLE, 0);
-	setGameOption(GameOption::GAME_OPTION_MESSAGE_BOX_BUTTON, 0);
+		if (game_check()) {
+			game_end();
+			time_check();
+			stopTimer(timer_end);
+		}
+	}
+	else if (mixing == 0 && object == start) {
+		game_prepare();
+		
+	}
+	
+}
+
+void timerCallback(TimerID timer)
+{
+	if (timer == timerMixing) {
+		puzzle_random_move();
+
+		if (mixing > 0) {
+			--mixing;
+
+			setTimer(timerMixing, animationTime);
+			startTimer(timerMixing);
+			set_timer_end();
+		}
+		else {
+
+			hideObject(start);
+			time_start = time(NULL);
+			showMessage("start, 완성시 걸린시간(초)이 표시됩니다.");
+			gametype = true;
+		}
+
+	}
+	else if (timer == timer_end) {
+		game_end();
+		showMessage("time over!!");
+	}
+}
+
+int main()
+{
+	setGameOption(GameOption::GAME_OPTION_ROOM_TITLE,0);
 	setGameOption(GameOption::GAME_OPTION_INVENTORY_BUTTON, 0);
+	setGameOption(GameOption::GAME_OPTION_MESSAGE_BOX_BUTTON, 0);
 
-	scene_back = createScene("background", "Images/back.png");
-	blank_back = create_Object("Images/blank.png", scene_back, 340, 60, true);
-	mixButton = create_Object("Images/mix.png", scene_back, 1100, 20, true);
+	setMouseCallback(mouseCallback);
+	setTimerCallback(timerCallback);
 
+	game_init();
 	startGame(scene_back);
-
-
 }
